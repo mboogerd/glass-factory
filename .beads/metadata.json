@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "glass_factory",
+  "project_id": "e0def6cc-5e4b-4b3f-ba76-a41351a99a00"
+}
