@@ -66,3 +66,9 @@
 # - github.token    → use GITHUB_TOKEN env var instead
 
 sync.remote: "mrboo/glass-factory-work"
+
+# Passive JSONL export for cross-workspace readers (e.g. the computenet XDEP
+# epic): regenerates .beads/issues.jsonl on each bd write. Git-ignored — the
+# Dolt DB (synced via bd dolt push/pull) is the source of truth.
+export:
+    auto: true
