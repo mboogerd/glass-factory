@@ -51,7 +51,9 @@ Each earned its place in a real incident — [references/why.md](references/why.
 6. **Implement** the smallest diff satisfying the acceptance criterion. For
    genuinely independent subtasks, dispatch parallel subagents — one worktree
    and branch each. Read every diff before it lands: you are accountable for
-   all of it.
+   all of it. A subagent has no inbound wake-up — its turn ending is its
+   completion — so it states a verdict (conditional if something is still
+   pending) and ends; it never waits.
 7. **Gate** (glass-factory): the substrate is locked — git + append-only JSONL
    events, Claude Agent SDK sessions, `gf` CLI, mediator-as-relay — and is not
    re-litigated in implementation. `npm test` once `package.json` exists; until
