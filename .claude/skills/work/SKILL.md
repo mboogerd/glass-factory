@@ -1,73 +1,69 @@
 ---
 name: work
-description: Runs one unattended work session on the glass-factory beads backlog — sync, select, claim one item, implement, gate, close, publish. Use when a cron job or scheduled work slot fires, or the user says "/work", "work the queue", or wants autonomous progress on glass-factory beads.
+description: Runs one unattended work session on the glass-factory beads backlog — sync, select, claim one item, implement in a worktree (parallel subagents allowed), gate, land via PR, close, publish. Use when a cron job or scheduled work slot fires, or the user says "/work", "work the queue", or wants autonomous progress on glass-factory beads.
 ---
 
-# /work — one session, one item at a time
+# /work
 
-Loop: sync → select → claim → implement → verify → close → publish.
-Repeat while budget remains; stop cleanly when it does not.
+This skill states intentions and invariants, not procedures. When a situation
+is not covered, act to preserve the intent — don't invent a rule, don't wait
+for permission on a step whose intent is already clear.
 
-## 0. Setup
+A session: sync → select → claim → implement → gate → land via PR → close →
+publish. Repeat within budget; stop cleanly when it runs out.
 
-- Work from the repo root. `bd dolt pull`. Pull failure: stop, report the error verbatim.
-- Budget: the slot's stated time, else 45 minutes. Never start an item you cannot finish
-  and verify in the remainder. Anything released mid-flight gets a progress comment.
+## Invariants
 
-## 1. Select
+Each earned its place in a real incident — [references/why.md](references/why.md).
 
-- `bd ready --json`. Pick the highest-priority leaf task completable this slot.
-  The M0 build sequence lives under epic `glass-factory-v4l`; build tasks follow
-  MILESTONES.md's own order, design beads (`v4l.*`) are doc deliverables in
-  `docs/adr/` style.
-- Skip: items whose assignee's `updated_at` is fresher than 24h; items naming an
-  open human decision.
-- Stale claim (in_progress, other assignee, `updated_at` older than 24h): take over,
-  say so in a comment.
-- Top of ready is an epic/feature with no ready children: run the `breakdown` skill
-  on one such parent, then re-select.
+- **The main checkout is shared infrastructure**: clean and synchronized with
+  origin at all times, never a work area. All work happens in git worktrees on
+  branches off `origin/main`, one per item, removed after landing. Sessions
+  overrun and become concurrent; worktrees are what keeps them from interfering.
+- **Changes land through a pull request**, never by pushing main directly.
+- **One beads claim at a time**; close or release it before the session ends.
+  Parallel subagents work *under* that one claim, not beside it.
+- **Bracket every shared beads write**: `bd dolt pull` → verify → write →
+  `bd dolt push`. Never push without pulling.
+- **Collision-safe creation**: never `bd create --parent` under an epic you did
+  not create this session — create unparented, re-parent with
+  `bd dep add <child> <parent> --type parent-child`.
+- **Failing gate = not done.** The close comment is the only reviewer present;
+  report what actually happened.
 
-## 2. Claim
+## The loop
 
-Bracket it: `bd dolt pull` → `bd show <id>` still unclaimed → `bd update <id> --claim`
-→ `bd dolt push`. Push failure means you do not own it: re-pull, re-check.
-
-## 3. Verify premises, then implement
-
-- Read the full bead, its cited MILESTONES.md/GRAMMAR.md/ADR sections, and any design
-  bead it depends on. Verify each stated precondition on disk. A false premise:
-  comment starting `QUESTION:`, release the claim (status open, assignee cleared),
-  select other work. Never build on a false premise; never silently re-scope.
-- Smallest diff satisfying the acceptance criterion. No invented scope, no drive-by
-  refactors, no TODO files.
-
-## 4. Gate (glass-factory-specific)
-
-- The substrate is locked and not re-litigated in implementation: git repo +
-  append-only JSONL events; agents as Claude Agent SDK sessions; `gf` CLI;
-  mediator-as-relay.
-- If `package.json` exists: `npm test` passes. Until it does, the gate is the
-  bead's own acceptance criterion, actually exercised (once `glass-factory-21j`
-  lands, replay-from-founding is the standing gate for log-touching work).
-- Event logs are append-only. New verbs go through GRAMMAR.md's closed vocabulary
-  (ADR 0003) — no ad-hoc verbs from an implementation task.
-- KERNEL.md is constitutional: changes only via its own amendment rule, never as a
-  side effect of a build task. File a QUESTION instead.
-
-## 5. Close and publish
-
-- `bd close <id>` with a comment: what changed, how verified.
-- Git: commit only files your item touched; end the message with
-  `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`; `git push`.
-  Push failure: report verbatim, leave committed.
-- `bd dolt push`. Loop to 1 or end the session with a one-paragraph summary.
-
-## Non-negotiable
-
-- One claim at a time; close or release before the session ends.
-- Never `bd create --parent=<epic you did not create this session>`: create unparented,
-  then `bd dep add <child> <parent> --type parent-child`. `blocks` edges task↔task only.
-- Never push without pulling first.
-- Failing gate = not done. Report it as such.
-
-When a rule seems dispensable, read [references/why.md](references/why.md) first.
+1. **Sync.** `bd dolt pull` from the repo root; on failure, stop and report the
+   error verbatim. Budget: the slot's stated time, else 45 minutes.
+2. **Select** from `bd ready`: the highest-priority leaf completable this slot.
+   The M0 build sequence lives under epic `glass-factory-v4l`; build tasks
+   follow MILESTONES.md's order, design beads (`v4l.*`) are doc deliverables in
+   `docs/adr/` style. Skip claims fresher than 24h and anything naming an open
+   human decision. A claim staler than 24h may be taken over — say so in a
+   comment. An epic with no ready children: run the `breakdown` skill, re-select.
+3. **Claim** inside a bracket; a failed push means it is not yours.
+4. **Workspace**: a fresh worktree and branch off `origin/main`, e.g.
+   `git worktree add ../glass-factory-wt/<id> -b bead/<id> origin/main`.
+5. **Verify premises** on disk before building — read the full bead, its cited
+   MILESTONES.md/GRAMMAR.md/ADR sections, and any design bead it depends on.
+   A false premise: `QUESTION:` comment, release the claim, select other work.
+   Never build on one, never silently re-scope.
+6. **Implement** the smallest diff satisfying the acceptance criterion. For
+   genuinely independent subtasks, dispatch parallel subagents — one worktree
+   and branch each. Read every diff before it lands: you are accountable for
+   all of it.
+7. **Gate** (glass-factory): the substrate is locked — git + append-only JSONL
+   events, Claude Agent SDK sessions, `gf` CLI, mediator-as-relay — and is not
+   re-litigated in implementation. `npm test` once `package.json` exists; until
+   then the gate is the bead's own acceptance criterion, actually exercised
+   (replay-from-founding becomes the standing gate for log-touching work once
+   `glass-factory-21j` lands). Event logs are append-only; new verbs go through
+   GRAMMAR.md's closed vocabulary (ADR 0003); KERNEL.md changes only via its own
+   amendment rule — QUESTION instead of editing it from a build task.
+8. **Land**: push the branch, `gh pr create`, and merge it yourself when the
+   gate is green, the scope is clean, and the change is easy to revert. If any
+   of those is in doubt, leave the PR open with a comment naming the doubt —
+   an open question in your summary is a dropped question. Remove the worktree
+   and branch after merge.
+9. **Close** the bead with what changed and how it was verified; `bd dolt push`.
+   Loop, or end with a one-paragraph session summary.
