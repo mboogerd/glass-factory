@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Keep only the newest validation run for a pull request. Main is exempt: a
+# completed post-merge check is more useful than a cancelled one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  repository-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # This repository currently contains its product specification rather
+      # than executable application code. Keep the first required CI check
+      # useful and dependency-free: whitespace errors make patches fail to
+      # apply cleanly, and malformed UTF-8 makes the canonical Markdown
+      # documents unsafe for tooling to consume.
+      - name: Reject whitespace errors in the change
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            git diff --check "$BASE" HEAD
+          else
+            git diff --check HEAD^ HEAD
+          fi
+
+      - name: Verify tracked Markdown is UTF-8
+        run: |
+          git ls-files -z -- '*.md' | while IFS= read -r -d '' file; do
+            iconv -f UTF-8 -t UTF-8 "$file" > /dev/null
+          done
+
+      - name: Verify the project entry points are present
+        run: |
+          test -f AGENTS.md
+          test -f CONTEXT.md
+          test -f KERNEL.md
+          test -f LIBRARY.md
+          test -f MILESTONES.md
