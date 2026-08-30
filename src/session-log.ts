@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isVerb, validateBody } from "./grammar.ts";
 
 export type Cause = { session: string; seq: number };
 export type EventInput = {
@@ -10,11 +11,6 @@ export type EventInput = {
   body: Record<string, unknown>;
 };
 export type Event = EventInput & { seq: number };
-
-const verbs = new Set([
-  "open", "close", "say", "address", "join", "leave", "attach", "detach",
-  "grant", "revoke", "spawn", "produce", "observe",
-]);
 
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -30,10 +26,11 @@ export function validateEnvelope(value: unknown): asserts value is Event {
   if (!object(value) || !Number.isSafeInteger(value.seq) || value.seq < 0
     || typeof value.ts !== "string" || Number.isNaN(Date.parse(value.ts))
     || typeof value.actor !== "string" || value.actor.length === 0
-    || typeof value.verb !== "string" || !verbs.has(value.verb)
+    || !isVerb(value.verb)
     || !validCause(value.cause) || !object(value.body)) {
     throw new Error("Invalid event envelope");
   }
+  validateBody(value.verb, value.body);
 }
 
 function sessionPath(root: string, session: string): string {
