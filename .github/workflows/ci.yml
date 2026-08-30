@@ -51,3 +51,19 @@ jobs:
           test -f KERNEL.md
           test -f LIBRARY.md
           test -f MILESTONES.md
+
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node runs the TypeScript test files directly by stripping types, so
+      # there is no build step and no dependency to install. Pin the major:
+      # type stripping is what makes that true, and it is version-gated.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run the test suite
+        run: npm test
