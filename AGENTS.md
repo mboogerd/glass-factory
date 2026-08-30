@@ -77,6 +77,15 @@ The managed Beads block is task-tracking guidance, not permission to override re
 - **Minimal**: Keep tool instruction files as pointers to `bd prime`; use the same conservative git policy unless active instructions say otherwise.
 - **Team-maintainer**: Only when the repository explicitly opts in, agents may close beads, run quality gates, commit, and push as part of session close. A current "do not commit" or "do not push" instruction still wins.
 
+**Active profile: Team-maintainer.** This repository opts both Claude and Codex
+into autonomous maintenance. Agents may claim and close beads, create isolated
+worktrees and branches, run quality gates, commit, push branches, create and
+merge pull requests, clean up landed worktrees, and synchronize Beads without
+requesting routine confirmation. Land code through pull requests; never push
+`main` directly. Explicit user/orchestrator limits, failed gates, unresolved
+human decisions, destructive operations, and credential or security boundaries
+still take precedence.
+
 ## Session Completion
 
 This protocol applies when ending a Beads implementation workflow. It is subordinate to explicit user, repository, and orchestrator instructions.
@@ -124,7 +133,17 @@ _Add your project-specific conventions here_
 
 ### Issue tracker
 
-Issues are tracked in beads (`bd`) — no GitHub/GitLab remote is configured. See `docs/agents/issue-tracker.md`.
+Issues are tracked in Beads (`bd`) and synchronized through its Dolt remote;
+code is hosted on GitHub and lands through pull requests. See
+`docs/agents/issue-tracker.md`.
+
+### Autonomous workflows
+
+Claude's canonical project workflows live under `.claude/skills/`. Codex entry
+points under `.agents/skills/` delegate to those same files so both agents obey
+one maintained workflow rather than drifting copies. Use `work` for unattended
+queue execution, `breakdown` for decomposing Beads items, and
+`resolve-friction` for recurring workflow friction.
 
 ### Triage labels
 

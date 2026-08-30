@@ -1,6 +1,8 @@
 # Issue tracker: Beads (bd)
 
-Issues and specs for this repo live in **beads** (`bd`), a local Dolt-backed issue tracker — not GitHub or GitLab. No git remote is configured, so beads sync is local-only for now.
+Issues and specs for this repo live in **Beads** (`bd`), a local Dolt-backed
+issue tracker, rather than GitHub Issues. Code is hosted on GitHub; Beads data
+synchronizes separately through the Dolt remote stored under `refs/dolt/data`.
 
 ## Conventions
 
@@ -27,10 +29,16 @@ Run `bd show <id>`.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a parent issue with **child** issues as tickets (`bd create ... --parent=<id>`).
+Used by `/wayfinder`. The **map** is a parent issue with **child** issues as
+tickets. Create shared children unparented, then attach them with a
+`parent-child` dependency so concurrent machines cannot mint colliding child
+IDs.
 
 - **Map**: a parent issue holding the Notes / Decisions-so-far / Fog body in its `--description`/`--notes`.
-- **Child ticket**: `bd create --title="..." --parent=<map-id> --type=task`, with the question in the description. Use `--notes`/`--design` for `Type:`/`Status:`-equivalent context if finer state is needed beyond bd's own `status` field.
+- **Child ticket**: `bd create --title="..." --type=task`, then
+  `bd dep add <child-id> <map-id> --type parent-child`, with the question in the
+  description. Use `--notes`/`--design` for `Type:`/`Status:`-equivalent context
+  if finer state is needed beyond bd's own `status` field.
 - **Blocking**: `bd dep add <child> <blocker>`. A ticket is unblocked when `bd show <child>` lists no open blockers (`bd blocked` also surfaces this).
 - **Frontier**: `bd ready --parent=<map-id>` (or filter `bd list` to the map's children) for open, unblocked, unclaimed issues; first by creation order wins.
 - **Claim**: `bd update <id> --claim` — the session's first write.
@@ -38,4 +46,7 @@ Used by `/wayfinder`. The **map** is a parent issue with **child** issues as tic
 
 ## Sync
 
-No git remote is configured for this repo yet, so `bd dolt push`/`pull` are not applicable. If a remote is added later, see https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md.
+Bracket shared Beads writes with `bd dolt pull` before the write and
+`bd dolt push` afterward. This is separate from normal code branch and pull
+request synchronization. See
+https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md.
